@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fluxo Comercial — Demonstração</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="apikey-modal.css">
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+
+<main class="hero">
+  <div class="hero-tag">Demonstração comercial</div>
+  <h1 class="hero-title">Da primeira mensagem<br>até a venda fechada.</h1>
+  <p class="hero-sub">Simulação completa do fluxo de atendimento via WhatsApp com IA, integrado ao painel de gestão do lojista — do clique no anúncio até o orçamento aprovado.</p>
+
+  <div class="hero-actions">
+    <a href="painel.html" class="plaque plaque-steel">
+      <span class="plaque-num">01</span>
+      <span class="plaque-label">Painel de Gestão</span>
+      <span class="plaque-desc">Acompanhe o funil em tempo real</span>
+    </a>
+
+    <a href="anuncio.html" class="plaque plaque-rust">
+      <span class="plaque-num">02</span>
+      <span class="plaque-label">Anúncio Simulado</span>
+      <span class="plaque-desc">Viva a jornada como um cliente final</span>
+    </a>
+  </div>
+
+  <p class="hero-hint">Dica: abra o Painel de Gestão em uma aba e o Anúncio Simulado em outra, lado a lado, para ver tudo acontecendo ao vivo.</p>
+</main>
+
+<footer class="hero-footer">Protótipo de demonstração — dados simulados</footer>
+
+<script src="config.js"></script>
+<script src="apikey.js"></script>
+<script src="funnel-store.js"></script>
+<script>
+  FunnelStore.recordEvent("site_visit", {});
+  // Pede a chave da IA logo na entrada, pra já estar pronta quando
+  // o Junior clicar em "Anúncio Simulado".
+  PillarisKey.ensure(function () {});
+</script>
+
+</body>
+</html>

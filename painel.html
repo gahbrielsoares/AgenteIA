@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel de Gestão — Funil Comercial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="painel.css">
+</head>
+<body>
+
+<header class="pnl-header">
+  <div>
+    <a href="index.html" class="pnl-back">&#8592; Voltar</a>
+    <h1 class="pnl-title">Funil Comercial — Tempo Real</h1>
+  </div>
+  <button id="resetBtn" class="pnl-reset">Reiniciar demonstração</button>
+</header>
+
+<main class="pnl-board" id="board">
+  <!-- colunas geradas via JS -->
+</main>
+
+<footer class="pnl-footer">
+  Atualiza automaticamente a cada 2 segundos · <span id="lastUpdate">--</span>
+</footer>
+
+<script src="config.js"></script>
+<script src="funnel-store.js"></script>
+<script src="painel.js"></script>
+</body>
+</html>

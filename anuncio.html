@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WhatsApp</title>
+<link rel="stylesheet" href="whatsapp.css">
+<link rel="stylesheet" href="apikey-modal.css">
+</head>
+<body>
+
+<div class="wa-app">
+
+  <div class="wa-header">
+    <a href="index.html" class="wa-back">&#8592;</a>
+    <div class="wa-avatar">S</div>
+    <div class="wa-contact">
+      <div class="wa-contact-name">Savane Revendedora Oficial</div>
+      <div class="wa-contact-status" id="statusLine">online</div>
+    </div>
+    <div class="wa-menu">&#8942;</div>
+  </div>
+
+  <div class="wa-chat" id="chatWindow"></div>
+
+  <div class="wa-inputbar">
+    <input type="text" id="msgInput" placeholder="Mensagem" autocomplete="off" />
+    <button id="sendBtn" class="wa-send" aria-label="Enviar">&#10148;</button>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="apikey.js"></script>
+<script src="funnel-store.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>
