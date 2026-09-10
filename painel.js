@@ -284,6 +284,7 @@
           ],
           temperature: 0.3,
           max_tokens: 300,
+          reasoning: { exclude: true },
         }),
       });
 
