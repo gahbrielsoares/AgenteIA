@@ -25,14 +25,20 @@
       <span class="plaque-desc">Acompanhe o funil em tempo real</span>
     </a>
 
-    <a href="anuncio.html" class="plaque plaque-rust">
+    <a href="anuncio.html?ad=1" class="plaque plaque-rust">
       <span class="plaque-num">02</span>
-      <span class="plaque-label">Anúncio Simulado</span>
+      <span class="plaque-label">Anúncio 1</span>
       <span class="plaque-desc">Viva a jornada como um cliente final</span>
+    </a>
+
+    <a href="anuncio.html?ad=2" class="plaque plaque-rust">
+      <span class="plaque-num">03</span>
+      <span class="plaque-label">Anúncio 2</span>
+      <span class="plaque-desc">Mesma jornada, campanha diferente</span>
     </a>
   </div>
 
-  <p class="hero-hint">Dica: abra o Painel de Gestão em uma aba e o Anúncio Simulado em outra, lado a lado, para ver tudo acontecendo ao vivo.</p>
+  <p class="hero-hint">Dica: abra o Painel de Gestão em uma aba e um dos Anúncios em outra, lado a lado, pra ver tudo acontecendo ao vivo. Teste os dois anúncios em momentos diferentes pra ver o comparativo de conversão no painel.</p>
 </main>
 
 <footer class="hero-footer">Protótipo de demonstração — dados simulados</footer>
@@ -41,9 +47,10 @@
 <script src="apikey.js"></script>
 <script src="funnel-store.js"></script>
 <script>
+  FunnelStore.seedIfEmpty();
   FunnelStore.recordEvent("site_visit", {});
   // Pede a chave da IA logo na entrada, pra já estar pronta quando
-  // o Junior clicar em "Anúncio Simulado".
+  // o Junior clicar em algum anúncio.
   PillarisKey.ensure(function () {});
 </script>
 

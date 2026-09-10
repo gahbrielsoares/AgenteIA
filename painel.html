@@ -3,30 +3,71 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Painel de Gestão — Funil Comercial</title>
+<title>Painel de Gestão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="painel.css">
+<link rel="stylesheet" href="apikey-modal.css">
 </head>
 <body>
 
 <header class="pnl-header">
   <div>
     <a href="index.html" class="pnl-back">&#8592; Voltar</a>
-    <h1 class="pnl-title">Funil Comercial — Tempo Real</h1>
+    <h1 class="pnl-title">Painel de Gestão</h1>
   </div>
   <button id="resetBtn" class="pnl-reset">Reiniciar demonstração</button>
 </header>
 
-<main class="pnl-board" id="board">
-  <!-- colunas geradas via JS -->
+<main class="pnl-main">
+
+  <section class="pnl-kpis" id="kpiRow"></section>
+
+  <section class="pnl-panel">
+    <h2 class="pnl-panel-title">Funil</h2>
+    <div class="pnl-board" id="board"></div>
+  </section>
+
+  <div class="pnl-row-2">
+    <section class="pnl-panel">
+      <h2 class="pnl-panel-title">Conversão por anúncio</h2>
+      <div id="adsPanel"></div>
+    </section>
+
+    <section class="pnl-panel">
+      <h2 class="pnl-panel-title">Onde os clientes mais abandonam</h2>
+      <div id="dropoffPanel"></div>
+    </section>
+  </div>
+
+  <section class="pnl-panel">
+    <h2 class="pnl-panel-title">🔥 Leads qualificados — aguardando atendimento</h2>
+    <div id="queuePanel"></div>
+  </section>
+
+  <section class="pnl-panel pnl-ai-panel">
+    <h2 class="pnl-panel-title">Pergunte à IA sobre o funil</h2>
+    <p class="pnl-ai-hint">Ex: "quais orçamentos estão parados?", "qual anúncio está performando melhor?"</p>
+    <div class="pnl-ai-inputrow">
+      <input type="text" id="aiQuestion" placeholder="Digite sua pergunta..." />
+      <button id="aiAskBtn">Perguntar</button>
+    </div>
+    <div id="aiAnswer" class="pnl-ai-answer" style="display:none;"></div>
+  </section>
+
 </main>
 
-<footer class="pnl-footer">
-  Atualiza automaticamente a cada 2 segundos · <span id="lastUpdate">--</span>
-</footer>
+<div id="leadModalOverlay" class="pnl-modal-overlay" style="display:none;">
+  <div class="pnl-modal">
+    <button id="leadModalClose" class="pnl-modal-close">&times;</button>
+    <div id="leadModalBody"></div>
+  </div>
+</div>
+
+<footer class="pnl-footer">Atualiza automaticamente · <span id="lastUpdate">--</span></footer>
 
 <script src="config.js"></script>
+<script src="apikey.js"></script>
 <script src="funnel-store.js"></script>
 <script src="painel.js"></script>
 </body>

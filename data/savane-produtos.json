@@ -4,53 +4,49 @@
   "observacao": "Loja simulada é uma revendedora autorizada Savane. Preços são estimativas de demonstração (m² já com ICMS, sem frete).",
   "linhas": [
     {
-      "nome": "Savane Urbana",
-      "tipologia": "Acetinado",
+      "nome": "Savane Nude",
+      "tipologia": "Cimentício acetinado",
+      "aplicacao": "piso",
       "ambientes": ["sala", "cozinha", "área comercial"],
       "formatos": [
-        { "medida": "60x60", "preco_m2": 59.9 },
-        { "medida": "60x120", "preco_m2": 84.9 }
+        { "medida": "60x60", "preco_m2": 62.9 },
+        { "medida": "60x120", "preco_m2": 87.9 }
       ],
-      "descricao": "Linha cimentícia contemporânea, tons cinza e grafite, para ambientes internos de alto tráfego."
+      "descricao": "Tom bege areia neutro, acabamento cimentício suave, combina com qualquer estilo de decoração.",
+      "imagem": "assets/pisos/savane-nude.jpg"
     },
     {
-      "nome": "Savane Rústica",
-      "tipologia": "Natural / Antiderrapante",
-      "ambientes": ["área externa", "varanda", "fachada", "piscina"],
+      "nome": "Savane Canyon",
+      "tipologia": "Efeito pedra rústica",
+      "aplicacao": "parede",
+      "ambientes": ["fachada", "parede de destaque", "área externa"],
       "formatos": [
-        { "medida": "45x90", "preco_m2": 69.9 },
-        { "medida": "60x60", "preco_m2": 64.9 }
+        { "medida": "30x60 (painel)", "preco_m2": 74.9 }
       ],
-      "descricao": "Porcelanato com PEI alto e antiderrapante (R11), pensado para áreas externas e molhadas."
+      "descricao": "Revestimento com efeito pedra canjiquinha em tons bege e marrom, textura rústica em relevo, ideal pra parede de destaque ou fachada.",
+      "imagem": "assets/pisos/savane-canyon.jpg"
     },
     {
-      "nome": "Savane Marmo",
-      "tipologia": "Polido",
-      "ambientes": ["sala", "hall", "área comercial premium"],
-      "formatos": [
-        { "medida": "90x90", "preco_m2": 119.9 },
-        { "medida": "120x120", "preco_m2": 159.9 }
-      ],
-      "descricao": "Efeito mármore com brilho polido, indicado para projetos de alto padrão."
-    },
-    {
-      "nome": "Savane Wood",
-      "tipologia": "Acetinado",
+      "nome": "Savane Teca",
+      "tipologia": "Efeito madeira acetinado",
+      "aplicacao": "piso",
       "ambientes": ["quarto", "sala", "escritório"],
       "formatos": [
-        { "medida": "20x120", "preco_m2": 79.9 }
+        { "medida": "20x120", "preco_m2": 82.9 }
       ],
-      "descricao": "Efeito madeira ripada, aconchegante, alta resistência a manchas."
+      "descricao": "Efeito madeira ripada em tom castanho médio, aconchegante, com veios naturais bem marcados.",
+      "imagem": "assets/pisos/savane-teca.jpg"
     },
     {
-      "nome": "Savane Concreto",
-      "tipologia": "Natural",
-      "ambientes": ["fachada", "área externa", "loja comercial"],
+      "nome": "Savane Alpina",
+      "tipologia": "Efeito pedra 3D",
+      "aplicacao": "parede",
+      "ambientes": ["parede de destaque", "fachada", "hall"],
       "formatos": [
-        { "medida": "60x60", "preco_m2": 54.9 },
-        { "medida": "60x120", "preco_m2": 79.9 }
+        { "medida": "30x60 (painel)", "preco_m2": 79.9 }
       ],
-      "descricao": "Efeito cimento queimado, visual industrial, ótimo custo-benefício."
+      "descricao": "Painel branco com textura de pedra em relevo tridimensional, visual clean e sofisticado.",
+      "imagem": "assets/pisos/savane-alpina.jpg"
     }
   ],
   "condicoes_pagamento_padrao": [

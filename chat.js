@@ -5,19 +5,25 @@
   const attachBtn = document.getElementById("attachBtn");
   const photoInput = document.getElementById("photoInput");
   const menuBtn = document.querySelector(".wa-menu");
+  const statusLine = document.getElementById("statusLine");
 
-  let history = [];
+  const urlParams = new URLSearchParams(window.location.search);
+  const adId = urlParams.get("ad") === "2" ? "Anúncio 2" : "Anúncio 1";
+
+  let history = []; // formato OpenAI, só role+content, pra mandar pra IA
+  let transcript = []; // formato pra guardar/exibir no painel: {role, text, at}
   let chatStarted = false;
   let catalogo = null;
   let systemPrompt = "";
   let apiKey = "";
   let model = "";
 
-  // --- estado da parte de imagem ---
-  const imageCache = {}; // nome da linha -> data URI já gerado
-  let currentProduct = null; // { nome, tipologia, formato, descricao }
+  // --- estado de imagem/produto ---
+  let currentProduct = null;
+  let knownAmbiente = null;
   let pendingPhotoDataUri = null;
   let awaitingProductChoice = false;
+  let awaitingAmbienteFor = null; // linha aguardando resposta de "qual ambiente"
 
   function nowLabel() {
     return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -25,6 +31,11 @@
 
   function scrollToBottom() {
     chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function pushTranscript(role, text) {
+    transcript.push({ role, text, at: Date.now() });
+    FunnelStore.updateLiveTranscript(transcript);
   }
 
   function addBubble(text, who) {
@@ -40,15 +51,16 @@
     row.appendChild(bubble);
     chatWindow.appendChild(row);
     scrollToBottom();
+    pushTranscript(who === "out" ? "user" : "assistant", text);
   }
 
-  function addImageBubble(dataUri, who, caption) {
+  function addImageBubble(src, who, caption) {
     const row = document.createElement("div");
     row.className = `wa-bubble-row ${who}`;
     const wrap = document.createElement("div");
     wrap.className = `wa-image-bubble ${who}`;
     const img = document.createElement("img");
-    img.src = dataUri;
+    img.src = src;
     wrap.appendChild(img);
     if (caption) {
       const cap = document.createElement("div");
@@ -59,6 +71,7 @@
     row.appendChild(wrap);
     chatWindow.appendChild(row);
     scrollToBottom();
+    pushTranscript(who === "out" ? "user" : "assistant", caption ? `[imagem] ${caption}` : "[imagem]");
     return row;
   }
 
@@ -155,6 +168,38 @@
     row.appendChild(card);
     chatWindow.appendChild(row);
     scrollToBottom();
+    pushTranscript("assistant", `[orçamento] ${quote.produto} - ${formatBRL(quote.valor_total)}`);
+  }
+
+  function addCatalogGallery() {
+    const row = document.createElement("div");
+    row.className = "wa-bubble-row in";
+
+    const card = document.createElement("div");
+    card.className = "wa-catalog-card";
+    card.innerHTML = `<div class="wa-catalog-title">🧱 Nosso catálogo</div><div class="wa-catalog-hint">Clique no piso que mais gostou</div>`;
+
+    const grid = document.createElement("div");
+    grid.className = "wa-catalog-grid";
+
+    catalogo.linhas.forEach((linha) => {
+      const item = document.createElement("div");
+      item.className = "wa-catalog-item";
+      const preco = linha.formatos[0]?.preco_m2;
+      item.innerHTML = `
+        <img src="${linha.imagem}" alt="${linha.nome}" />
+        <div class="wa-catalog-item-name">${linha.nome}</div>
+        <div class="wa-catalog-item-price">${preco ? formatBRL(preco) + "/m²" : ""}</div>
+      `;
+      item.addEventListener("click", () => handleCatalogClick(linha));
+      grid.appendChild(item);
+    });
+
+    card.appendChild(grid);
+    row.appendChild(card);
+    chatWindow.appendChild(row);
+    scrollToBottom();
+    pushTranscript("assistant", "[catálogo exibido]");
   }
 
   function stripStrayTags(text) {
@@ -175,6 +220,7 @@
     let text = rawText;
     let quote = null;
     let showImgLinha = null;
+    let showCatalog = false;
 
     const quoteMatch = text.match(/<<QUOTE>>([\s\S]*?)<<END>>/);
     if (quoteMatch) {
@@ -195,7 +241,12 @@
       showImgLinha = showImgMatch[1].trim();
     }
 
-    return { visibleText: stripStrayTags(text), quote, showImgLinha };
+    if (/<<CATALOG>>/.test(text)) {
+      text = text.replace(/<<CATALOG>>/g, "");
+      showCatalog = true;
+    }
+
+    return { visibleText: stripStrayTags(text), quote, showImgLinha, showCatalog };
   }
 
   function buildSystemPrompt() {
@@ -217,11 +268,13 @@ ${JSON.stringify(catalogo.linhas, null, 2)}
 Condições de pagamento padrão: ${JSON.stringify(catalogo.condicoes_pagamento_padrao)}
 Prazo de entrega padrão: ${catalogo.prazo_entrega_padrao}
 
-MOSTRANDO IMAGENS: Se o cliente pedir pra ver como é o produto, pedir uma foto/imagem, ou perguntar
-"como ele é visualmente", responda normalmente explicando em texto E inclua, sozinho ao final da mensagem,
-o marcador <<SHOWIMG:Nome Exato da Linha>> (usando o nome EXATO de uma das linhas do catálogo, ex:
-<<SHOWIMG:Savane Wood>>). Isso vai mostrar uma foto de referência pro cliente. Também pode usar esse
-marcador proativamente quando estiver recomendando/sugerindo uma linha específica pela primeira vez.
+MOSTRANDO O CATÁLOGO: se o cliente pedir pra ver os produtos, o catálogo, ou "o que vocês têm", responda
+brevemente em texto e inclua sozinho ao final o marcador <<CATALOG>> - isso mostra uma vitrine com fotos
+reais de todas as linhas, e o próprio cliente pode clicar na que gostar (isso já vai disparar o restante
+do fluxo sozinho, você não precisa fazer mais nada nesse momento além de aguardar).
+
+MOSTRANDO FOTO DE UM PRODUTO ESPECÍFICO: se o cliente perguntar como é um produto específico que ele já
+mencionou (não o catálogo geral), inclua <<SHOWIMG:Nome Exato da Linha>> ao final da mensagem.
 
 GERANDO ORÇAMENTO: quando tiver informação suficiente, responda com uma mensagem curta de transição
 (ex: "Perfeito! Montei seu orçamento aqui 👇") e, IMEDIATAMENTE APÓS, inclua um bloco especial no seguinte
@@ -248,12 +301,12 @@ No campo "cliente_nome": se o cliente já disse o nome dele durante a conversa, 
 disse o nome, escreva exatamente a palavra "Cliente" - nunca deixe vazio, nunca use um traço "-" ou "N/A".
 
 REGRA CRÍTICA DE FORMATO: as únicas tags especiais permitidas em toda a conversa são exatamente
-<<QUOTE>> ... <<END>> e <<SHOWIMG:Nome da Linha>>, nos formatos mostrados acima. Nunca invente, gere ou
-deixe escapar qualquer outra tag, marcador ou código entre sinais de menor/maior (como <ALGO>, [ALGO] ou
-similares). Se não for gerar orçamento nem mostrar imagem, responda apenas com texto comum.
+<<QUOTE>>...<<END>>, <<SHOWIMG:Nome da Linha>> e <<CATALOG>>, nos formatos mostrados acima. Nunca invente,
+gere ou deixe escapar qualquer outra tag, marcador ou código entre sinais de menor/maior. Se não for gerar
+orçamento nem mostrar imagem/catálogo, responda apenas com texto comum.
 
-Se você receber uma instrução de sistema avisando que o cliente enviou uma foto do ambiente dele e viu uma
-prévia com o piso aplicado, comente de forma natural e pergunte o que achou, sem gerar novo bloco.
+Se você receber uma instrução de sistema avisando que o cliente viu uma prévia visual (foto do ambiente ou
+prévia gerada), comente de forma natural e pergunte o que achou, sem gerar novo bloco.
 
 Se você receber uma instrução de sistema avisando que o cliente aprovou o orçamento, assuma o papel de
 "vendedor fechando a venda": confirme a forma de pagamento escolhida, informe prazo de entrega, e finalize
@@ -269,10 +322,7 @@ pode usar emojis pontuais e quebras de linha.
   async function callOpenRouterChat(messages) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: 500 }),
     });
     if (!response.ok) throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
@@ -280,13 +330,11 @@ pode usar emojis pontuais e quebras de linha.
     return data.choices?.[0]?.message?.content || "";
   }
 
-  async function callImageModelRaw(imageModel, contentParts) {
+  async function callImageModelRaw(contentParts) {
+    const imageModel = window.PILLARIS_CONFIG.IMAGE_MODEL;
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: imageModel,
         messages: [{ role: "user", content: contentParts }],
@@ -301,69 +349,74 @@ pode usar emojis pontuais e quebras de linha.
     return dataUri;
   }
 
-  async function callImageModel(contentParts) {
-    const primary = window.PILLARIS_CONFIG.IMAGE_MODEL;
-    const fallback = window.PILLARIS_CONFIG.IMAGE_MODEL_FALLBACK;
-    try {
-      return await callImageModelRaw(primary, contentParts);
-    } catch (e) {
-      if (!fallback || fallback === primary) throw e;
-      return await callImageModelRaw(fallback, contentParts);
-    }
-  }
+  // --- foto de referência do produto: agora é sempre a foto REAL bundled, sem IA ---
 
-  // --- foto de referência do produto ---
-
-  async function getProductImageDataUri(linha) {
-    if (imageCache[linha.nome]) return imageCache[linha.nome];
-    const prompt = `Fotografia realista, em close-up, de um piso de porcelanato ${linha.nome}, ` +
-      `tipologia ${linha.tipologia}, formato ${linha.formato}, aplicado em um ambiente de ${linha.ambientes.join(" ou ")}. ` +
-      `${linha.descricao} Luz natural, foto de catálogo de loja de materiais de construção, alta qualidade, sem pessoas, sem texto na imagem.`;
-    const dataUri = await callImageModel([{ type: "text", text: prompt }]);
-    imageCache[linha.nome] = dataUri;
-    return dataUri;
-  }
-
-  async function showProductImage(nomeAproximado) {
+  function showProductImage(nomeAproximado) {
     const linha = findLinhaByNome(nomeAproximado);
     if (!linha) return;
-    const loadingRow = addImageLoading(`Gerando foto de referência do ${linha.nome}...`);
-    try {
-      const dataUri = await getProductImageDataUri(linha);
-      loadingRow.remove();
-      addImageBubble(dataUri, "in", `${linha.nome} — ${linha.tipologia}, ${linha.formato}`);
-    } catch (e) {
-      loadingRow.remove();
-      addBubble(`(Não consegui gerar a foto de referência agora, mas o ${linha.nome} tem ${linha.descricao.toLowerCase()})`, "in");
+    addImageBubble(linha.imagem, "in", `${linha.nome} — ${linha.tipologia}, ${linha.formatos[0]?.medida || ""}`);
+  }
+
+  // --- catálogo: clique gera prévia sintética (sem precisar de foto do cliente) ---
+
+  function handleCatalogClick(linha) {
+    currentProduct = linha;
+    addBubble(`(Selecionou ${linha.nome} no catálogo)`, "out");
+
+    if (knownAmbiente) {
+      generateRoomPreview(linha, knownAmbiente);
+    } else {
+      awaitingAmbienteFor = linha;
+      const alvo = linha.aplicacao === "parede" ? "colocar esse revestimento" : "colocar esse piso";
+      addBubble(`Boa escolha, o ${linha.nome}! 😍 Onde você gostaria de ${alvo}? Sala? Quarto? Fachada? Me diga!`, "in");
     }
   }
 
-  // --- aplicar piso na foto do ambiente do cliente ---
+  async function generateRoomPreview(linha, ambiente) {
+    const loadingRow = addImageLoading(`Gerando uma prévia do ${linha.nome} no(a) ${ambiente}...`);
+    try {
+      const superficie = linha.aplicacao === "parede" ? "parede em destaque" : "piso";
+      const prompt = `Fotografia realista e profissional de um(a) ${ambiente} residencial, decorado de forma simples e ` +
+        `elegante, onde ${superficie} está revestido(a) com porcelanato ${linha.nome} (${linha.descricao}), ` +
+        `tipologia ${linha.tipologia}. Luz natural, sem pessoas, sem texto na imagem, aparência de foto real de decoração.`;
+      const dataUri = await callImageModelRaw([{ type: "text", text: prompt }]);
+      loadingRow.remove();
+      addImageBubble(dataUri, "in", `Prévia: ${linha.nome} no(a) ${ambiente}! O que achou? 😊`);
+      history.push({ role: "user", content: `[Vi uma prévia gerada do ${linha.nome} aplicado no(a) ${ambiente}.]` });
+      callAssistant(
+        `O cliente acabou de ver uma prévia visual gerada (${linha.nome} aplicado no(a) ${ambiente}, sem ser foto do ` +
+        `ambiente real dele, só uma simulação). Comente de forma breve e calorosa, pergunte o que achou e se quer ` +
+        `seguir com esse produto pro orçamento. Não gere <<QUOTE>>, <<SHOWIMG>> nem <<CATALOG>> agora.`
+      );
+    } catch (e) {
+      loadingRow.remove();
+      addBubble(`Não consegui gerar a prévia agora 😕 Mas o ${linha.nome} é lindo, quer que eu já monte um orçamento com ele?`, "in");
+    }
+  }
+
+  // --- upload da foto do próprio ambiente do cliente ---
 
   async function applyFloorToRoomPhoto(roomDataUri, linha) {
-    const loadingRow = addImageLoading(`Aplicando o piso ${linha.nome} na sua foto...`);
+    const loadingRow = addImageLoading(`Aplicando o ${linha.nome} na sua foto...`);
     try {
-      const prompt = `Edite esta foto de ambiente: substitua APENAS o piso/chão atual por um piso de ` +
-        `porcelanato ${linha.nome} (${linha.descricao}), tipologia ${linha.tipologia}, formato ${linha.formato}. ` +
-        `Mantenha paredes, móveis, iluminação e todo o resto do ambiente exatamente iguais - só o piso deve mudar. ` +
-        `Resultado deve parecer uma foto real, não um desenho.`;
-      const dataUri = await callImageModel([
+      const superficie = linha.aplicacao === "parede" ? "parede em destaque" : "piso/chão";
+      const prompt = `Edite esta foto de ambiente: substitua APENAS o(a) ${superficie} atual por ${linha.nome} ` +
+        `(${linha.descricao}), tipologia ${linha.tipologia}. Mantenha o restante do ambiente exatamente igual - ` +
+        `só essa superfície deve mudar. Resultado deve parecer uma foto real, não um desenho.`;
+      const dataUri = await callImageModelRaw([
         { type: "text", text: prompt },
         { type: "image_url", image_url: { url: roomDataUri } },
       ]);
       loadingRow.remove();
-      addImageBubble(dataUri, "in", `Prévia com ${linha.nome}! O que achou? 😊`);
-      history.push({
-        role: "user",
-        content: `[Enviei uma foto do meu ambiente e recebi uma prévia com o piso ${linha.nome} aplicado.]`,
-      });
+      addImageBubble(dataUri, "in", `Prévia com ${linha.nome} na sua foto! O que achou? 😊`);
+      history.push({ role: "user", content: `[Enviei foto do meu ambiente e recebi prévia com ${linha.nome} aplicado.]` });
       callAssistant(
-        `O cliente acabou de ver uma prévia visual (foto do ambiente dele com o piso ${linha.nome} aplicado). ` +
-        `Comente de forma breve e calorosa e pergunte o que achou, sem gerar bloco <<QUOTE>> nem <<SHOWIMG>> agora.`
+        `O cliente viu uma prévia com foto REAL do ambiente dele, com o ${linha.nome} aplicado. Comente de forma breve ` +
+        `e calorosa e pergunte o que achou. Não gere <<QUOTE>>, <<SHOWIMG>> nem <<CATALOG>> agora.`
       );
     } catch (e) {
       loadingRow.remove();
-      addBubble("Poxa, não consegui gerar a prévia na sua foto agora 😕 Mas posso te mostrar uma foto de referência do produto, se quiser!", "in");
+      addBubble("Não consegui gerar a prévia na sua foto agora 😕 Mas posso te mostrar o catálogo com fotos de referência!", "in");
     }
   }
 
@@ -379,11 +432,15 @@ pode usar emojis pontuais e quebras de linha.
       const raw = await callOpenRouterChat(messages);
       hideTyping();
 
-      const { visibleText, quote, showImgLinha } = parseAssistantText(raw);
+      const { visibleText, quote, showImgLinha, showCatalog } = parseAssistantText(raw);
 
       if (visibleText) {
         addBubble(visibleText, "in");
         history.push({ role: "assistant", content: visibleText });
+      }
+
+      if (showCatalog) {
+        setTimeout(addCatalogGallery, 400);
       }
 
       if (showImgLinha) {
@@ -395,11 +452,13 @@ pode usar emojis pontuais e quebras de linha.
           addQuoteCard(quote);
           const linha = findLinhaByNome(quote.produto);
           if (linha) currentProduct = linha;
-          FunnelStore.recordEvent("quote_generated", {
-            nome: quote.cliente_nome,
-            produto: quote.produto,
-            valor_total: quote.valor_total,
-          });
+          if (quote.ambiente) knownAmbiente = quote.ambiente;
+          FunnelStore.recordEvent(
+            "quote_generated",
+            { nome: quote.cliente_nome, produto: quote.produto, valor_total: quote.valor_total },
+            adId,
+            transcript
+          );
         }, 500);
       }
     } catch (e) {
@@ -415,11 +474,12 @@ pode usar emojis pontuais e quebras de linha.
   function handleApprove(quote) {
     addBubble("✅ Aprovado! Pode seguir.", "out");
     history.push({ role: "user", content: "Aprovo o orçamento. Pode seguir." });
-    FunnelStore.recordEvent("quote_approved", {
-      nome: quote.cliente_nome,
-      produto: quote.produto,
-      valor_total: quote.valor_total,
-    });
+    FunnelStore.recordEvent(
+      "quote_approved",
+      { nome: quote.cliente_nome, produto: quote.produto, valor_total: quote.valor_total },
+      adId,
+      transcript
+    );
     callAssistant(
       "O cliente ACABOU DE APROVAR o orçamento. Assuma agora o papel de vendedor fechando a venda: " +
       "pergunte/confirme a forma de pagamento entre as opções disponíveis, confirme o prazo de entrega, " +
@@ -440,13 +500,23 @@ pode usar emojis pontuais e quebras de linha.
 
     if (!chatStarted) {
       chatStarted = true;
-      FunnelStore.recordEvent("chat_start", {});
+      FunnelStore.recordEvent("chat_start", {}, adId, transcript);
     }
 
     addBubble(text, "out");
     msgInput.value = "";
 
-    // Se estávamos esperando o cliente escolher qual linha aplicar na foto
+    // Respondendo "qual ambiente" depois de clicar num piso do catálogo
+    if (awaitingAmbienteFor) {
+      const linha = awaitingAmbienteFor;
+      awaitingAmbienteFor = null;
+      knownAmbiente = text;
+      history.push({ role: "user", content: text });
+      generateRoomPreview(linha, text);
+      return;
+    }
+
+    // Respondendo "qual linha" depois de anexar uma foto do ambiente sem produto definido
     if (awaitingProductChoice) {
       const linha = findLinhaByNome(text);
       if (linha && pendingPhotoDataUri) {
@@ -458,7 +528,6 @@ pode usar emojis pontuais e quebras de linha.
         applyFloorToRoomPhoto(photo, linha);
         return;
       }
-      // não reconheceu a linha: deixa cair no fluxo normal, a Ana pode ajudar
       awaitingProductChoice = false;
     }
 
@@ -486,7 +555,7 @@ pode usar emojis pontuais e quebras de linha.
 
     if (!chatStarted) {
       chatStarted = true;
-      FunnelStore.recordEvent("chat_start", {});
+      FunnelStore.recordEvent("chat_start", {}, adId, transcript);
     }
 
     const dataUri = await fileToDataUrl(file);
@@ -519,6 +588,8 @@ pode usar emojis pontuais e quebras de linha.
   }
 
   async function init() {
+    if (statusLine) statusLine.textContent = `online · origem: ${adId}`;
+
     try {
       const res = await fetch("data/savane-produtos.json");
       catalogo = await res.json();
@@ -528,7 +599,7 @@ pode usar emojis pontuais e quebras de linha.
     }
     systemPrompt = buildSystemPrompt();
 
-    FunnelStore.recordEvent("ad_click", {});
+    FunnelStore.recordEvent("ad_click", {}, adId);
 
     const opening = "Olá! 👋 Vi que você chegou pelo nosso anúncio.\nSou a Ana, da loja revendedora Savane. Antes de mais nada, qual seu nome? E me conta, você está buscando revestimento pra qual ambiente da sua obra ou reforma?";
     setTimeout(() => {
