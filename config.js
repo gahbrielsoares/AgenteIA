@@ -13,12 +13,14 @@
 // Modelo de IA usado para IMAGEM (mostrar foto do produto e aplicar o piso
 // na foto do ambiente do cliente). Esse recurso usa um modelo diferente,
 // especializado em gerar/editar imagens.
-// A variante ":free" pode sair do ar sem aviso (modelos gratuitos de imagem
-// são mais instáveis que os de texto). Se parar de funcionar, troque para
-// "google/gemini-3.1-flash-image" (pago, mas custa poucos centavos por
-// imagem - precisa ter um pouco de crédito na conta OpenRouter).
+//
+// Fica só na versão GRATUITA de propósito (você pediu pra não usar paga).
+// Se esse modelo gratuito sair do ar, o app mostra uma mensagem amigável
+// de erro em vez de usar algo pago. Se quiser trocar de modelo gratuito,
+// veja a lista atualizada em https://openrouter.ai/models?max_price=0
+// (procure por modelos com "image" no nome/descrição).
 window.PILLARIS_CONFIG = {
   DEFAULT_MODEL: "openrouter/free",
   IMAGE_MODEL: "google/gemini-2.5-flash-image-preview:free",
-  IMAGE_MODEL_FALLBACK: "google/gemini-3.1-flash-image",
+  IMAGE_MODEL_FALLBACK: "", // deixe vazio para nunca usar modelo pago
 };
