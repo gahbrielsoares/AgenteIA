@@ -323,11 +323,29 @@ pode usar emojis pontuais e quebras de linha.
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: 500 }),
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.6,
+        max_tokens: 500,
+        reasoning: { exclude: true }, // impede o modelo de "pensar em voz alta" na resposta
+      }),
     });
     if (!response.ok) throw new Error(`OpenRouter ${response.status}: ${await response.text()}`);
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "";
+  }
+
+  // Detecta se a resposta parece ser um "vazamento de raciocínio" (modelo pensando
+  // em voz alta em vez de responder) - alguns modelos gratuitos fazem isso mesmo
+  // com reasoning.exclude, então isso é uma segunda camada de proteção.
+  function looksLikeReasoningLeak(text) {
+    if (!text) return false;
+    const leakMarkers = /\b(Okay, let's|Let me think|Wait, but|Wait, the user|First, I need|I need to (check|confirm|figure))\b/i;
+    if (leakMarkers.test(text)) return true;
+    // resposta muito longa e sem nenhuma pontuação de emoji/tom de WhatsApp também é suspeita
+    if (text.length > 900 && !/[😊👋✅📋🧱]/.test(text)) return true;
+    return false;
   }
 
   async function callImageModelRaw(contentParts) {
@@ -429,7 +447,18 @@ pode usar emojis pontuais e quebras de linha.
       if (systemNote) messages.push({ role: "system", content: systemNote });
       messages.push(...history);
 
-      const raw = await callOpenRouterChat(messages);
+      let raw = await callOpenRouterChat(messages);
+
+      // Se parecer vazamento de raciocínio, tenta de novo uma vez antes de desistir
+      if (looksLikeReasoningLeak(raw)) {
+        raw = await callOpenRouterChat(messages);
+      }
+      if (looksLikeReasoningLeak(raw)) {
+        hideTyping();
+        addBubble("Deixa eu reformular isso rapidinho... pode repetir sua última mensagem? 🙏", "in");
+        return;
+      }
+
       hideTyping();
 
       const { visibleText, quote, showImgLinha, showCatalog } = parseAssistantText(raw);
